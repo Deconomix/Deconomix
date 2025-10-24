@@ -48,7 +48,7 @@ For easier usage, we also distribute a graphical user interface for our package,
 Check out the corresponding repository of [Deconomix GUI](https://gitlab.gwdg.de/MedBioinf/MedicalDataScience/Deconomix-GUI).
 
 ## For Developers
-For feature requests and bug reports do not hesitate to contact us via a gitlab issue or email.
+For feature requests and bug reports do not hesitate to contact us via a GitHub issue or email.
 
 If you want to generate or update the html documentation yourself, follow these steps:
 
