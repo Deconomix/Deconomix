@@ -34,7 +34,7 @@ pip install deconomix
 Alternatively, this git repository can be cloned to install the latest version:
 
 ```
-pip install git+https://gitlab.gwdg.de/MedBioinf/MedicalDataScience/DeconomiX.git
+pip install git+https://github.com/Deconomix/Deconomix.git
 ```
 
 ## Getting Started
