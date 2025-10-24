@@ -2,7 +2,7 @@
 
 ## Overview
 
-Deconomix is a Python library aimed at the bioinformatics community, offering methods to estimate cell type compositions, hidden background contributions and gene regulation factors of bulk RNA mixtures. Visit the documentation [here](https://medbioinf.pages.gwdg.de/MedicalDataScience/DeconomiX/).
+Deconomix is a Python library aimed at the bioinformatics community, offering methods to estimate cell type compositions, hidden background contributions and gene regulation factors of bulk RNA mixtures. Visit the documentation [here](https://deconomix.github.io/Deconomix/).
 
 ## Features
 
