@@ -1,4 +1,4 @@
-DeconomiX Documentation
+Deconomix Documentation
 ==================
 The `deconomix` package provides functions for (Adaptive) Digital Tissue Deconvolution.
 It is split into two submodules, `deconomix.utils` and `deconomix.methods`, where the first provides useful utilities 
@@ -23,4 +23,4 @@ Alternatively, clone the repository and install from the directory:
 
 .. code-block:: bash
    
-   pip install git+https://gitlab.gwdg.de/MedBioinf/MedicalDataScience/DeconomiX.git
+   pip install git+https://github.com/Deconomix/Deconomix.git
