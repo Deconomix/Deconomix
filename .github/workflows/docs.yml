@@ -42,6 +42,8 @@ jobs:
           pip install -U pip
           # install main project dependencies
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # install package itself for autodoc
+          pip install -e .
           # ensure doc tools are always installed
           pip install sphinx sphinx-rtd-theme
 
