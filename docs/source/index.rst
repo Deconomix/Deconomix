@@ -17,7 +17,7 @@ In the article, we divided the functionalities of Deconomix semantically into th
 
 Module 1: Learning Gene Weights:
 
-.. code-block:: bash
+.. code-block:: python
 
    X_ref, Y_train, C_train = deconomix.utils.simulate_data(scRNA_df, n_mixtures=10000)
    module1 = deconomix.methods.DTD(X_ref, Y_train, C_train)
@@ -26,7 +26,7 @@ Module 1: Learning Gene Weights:
 
 Module 2: Cellular Composition (with hidden background)
 
-.. code-block:: bash
+.. code-block:: python
 
    module2 = deconomix.methods.ADTD(X_ref, test_bulks_df, gene_weights, C_static = False, Delta_static = True)
    module2.run()
@@ -36,7 +36,7 @@ Module 2: Cellular Composition (with hidden background)
 
 Module 3: Gene Regulation
 
-.. code-block:: bash
+.. code-block:: python
 
    # Search hyperparameter with deconomix.methods.HPS() or determine otherwise, e.g. 1e-6
    module3 = deconomix.methods.ADTD(X_ref, test_bulks_df, gene_weights, C_static=True, Delta_static = true, lambda2 = 1e-6)
