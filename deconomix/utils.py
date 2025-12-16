@@ -204,10 +204,10 @@ def load_example():
 
     Returns
     -------
-    tir_train : pd.DataFrame
+    tir_test : pd.DataFrame
         Matrix that contains multiple single cell RNA profiles for different cell types from a set of tumors.
         Column labels equals cell type. Shape: genes x n_samples
-    tir_test : pd.DataFrame
+    tir_train : pd.DataFrame
         Matrix that contains multiple single cell RNA profiles for different cell types from a different set of tumors.
         Column labels equals cell type. Shape: genes x n_samples
     """
