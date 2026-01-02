@@ -811,6 +811,7 @@ class HPS:
             Maximum lambda2 value for the grid search. Default is 1.
         """
         
+        
         self.X_ref = X_ref
         self.Y_test = Y_test
         self.gamma = gamma
@@ -828,6 +829,10 @@ class HPS:
             self.Y_all = Y_all
         else: 
             self.Y_all = Y_test
+
+        # Set numerical column labels
+        self.Y_test.columns = range(self.Y_test.shape[1])
+        self.Y_all.columns = range(self.Y_all.shape[1])
         
     @staticmethod
     def cross_validation_split_columns(df, n_splits=5):
