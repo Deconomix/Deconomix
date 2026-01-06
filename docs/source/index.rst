@@ -39,7 +39,7 @@ Module 3: Gene Regulation
 .. code-block:: python
 
    # Search hyperparameter with deconomix.methods.HPS() or determine otherwise, e.g. 1e-6
-   module3 = deconomix.methods.ADTD(X_ref, test_bulks_df, gene_weights, C_static=True, Delta_static = true, lambda2 = 1e-6)
+   module3 = deconomix.methods.ADTD(X_ref, test_bulks_df, gene_weights, C_static=True, Delta_static = False, lambda2 = 1e-6)
    # This also updates the cellular contributions slightly.
    Cellular_Contributions = module3.C_est
    Hidden_Contributions   = module3.c_est
