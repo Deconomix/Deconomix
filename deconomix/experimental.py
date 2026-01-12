@@ -7,6 +7,7 @@ from sklearn.model_selection import KFold
 from deconomix.methods import ADTD
 import multiprocessing as mp
 from tqdm import tqdm
+import datetime
 
 class HPS2:
     def __init__(self,
@@ -22,7 +23,7 @@ class HPS2:
         self.Y_df = Y_test
         self.Y_mat = Y_test.values
         self.gamma = gamma
-        self.G_mat = np.diag(gamma.values)
+        self.G_mat = np.diag(np.sqrt(gamma.values.flatten()))
         self.k_folds = k_folds
         self.lambdas = lambdas
         self.validation_losses = pd.DataFrame(
@@ -60,8 +61,12 @@ class HPS2:
     def _generalization_loss(self, Delta, test_ids):
         Y_test_mat = self.Y_df.loc[:,test_ids].values
         C_test_mat = self.C_df_baseline.loc[:,test_ids].values
-        loss = np.linalg.norm(Y_test_mat - ((Delta.values * self.X_mat) @ C_test_mat))**2
-        return loss
+        recon_error = Y_test_mat - ((Delta.values * self.X_mat) @ C_test_mat)
+        #print(recon_error.shape)
+        #print(self.G_mat.shape)
+        loss_raw = np.linalg.norm(recon_error, 'fro')**2
+        loss_weighted = np.linalg.norm(self.G_mat @ recon_error, 'fro')**2
+        return loss_raw, loss_weighted
 
         
                 
@@ -101,9 +106,9 @@ class HPS2:
 
         # Evaluate Generalization Performance
 
-        loss = self._generalization_loss(model.Delta_est, test_ids)
+        loss_raw, loss_weighted  = self._generalization_loss(model.Delta_est, test_ids)
         #print(f"Finished job: fold={fold}, lambda={lmbda}, loss={loss}")
-        return {"fold": fold, "lambda": lmbda, "loss": loss}
+        return {"fold": fold, "lambda": lmbda, "loss_raw": loss_raw, "loss_weighted": loss_weighted}
 
 
     def run(self, n_workers=10):
@@ -123,8 +128,18 @@ class HPS2:
                 results.append(result)
 
         # Store or return results as appropriate (here we set them as an attribute)
-        self.results_ = results
-        return results
+        self.results = results
+
+        # Write results to a log file with a timestamp
+        log_filename = f"deconomix_run_results_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        try:
+            with open(log_filename, "w") as logfile:
+                logfile.write(f"Run timestamp: {datetime.datetime.now().isoformat()}\n")
+                logfile.write("Results:\n")
+                for res in results:
+                    logfile.write(str(res) + "\n")
+        except Exception as e:
+            print(f"Could not write log file: {e}")
 
 
 
