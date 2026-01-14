@@ -9,7 +9,7 @@ import multiprocessing as mp
 from tqdm import tqdm
 import datetime
 
-class HPS2:
+class HPS:
     def __init__(self,
                  X_ref : pd.DataFrame,
                  Y_test : pd.DataFrame,

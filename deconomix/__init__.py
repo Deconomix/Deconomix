@@ -1,3 +1,3 @@
 from . import methods
 from . import utils
-from . import experimental
+from . import hps
