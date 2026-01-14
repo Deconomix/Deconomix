@@ -15,7 +15,7 @@ class HPS2:
                  Y_test : pd.DataFrame,
                  gamma : pd.DataFrame,
                  k_folds: int = 5,
-                 lambdas: Iterable = np.logspace(-10, 0, num=11)):
+                 lambdas: Iterable = np.logspace(-20, 0, num=21)):
 
         # Initialize Attributes
         self.X_df = X_ref
@@ -29,16 +29,17 @@ class HPS2:
         self.validation_losses = pd.DataFrame(
             columns=["fold", "lambda", "loss"]
         )
+        self.results_raw = None
         self.results = None
 
         # Force numerical sample ids
-        self.Y_df.columns = range(self.Y_df.shape[1])
+        self.Y_df.columns = list(range(self.Y_df.shape[1]))
 
         # Prepare list of jobs (one for every (fold, lambda) combination)
         print("Preparing Job List")
         self.jobs = []
         kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
-        for fold_num, (train_index, test_index) in enumerate(kf.split(self.Y_df)):
+        for fold_num, (train_index, test_index) in enumerate(kf.split(np.arange(self.Y_df.shape[1]))):
             for lmbda in lambdas:
                 job = {
                     "fold": fold_num,
@@ -53,15 +54,18 @@ class HPS2:
         print("Preparing Baseline Model")
         model_baseline = ADTD(self.X_df, self.Y_df, self.gamma, C_static=True, Delta_static=True, max_iterations=1000)
         model_baseline.run()
-        self.C_df_baseline = model_baseline.C_est
+        self.Cc_mat = np.vstack((model_baseline.C_est.values, model_baseline.c_est.values))
+        self.x_df = model_baseline.x_est
         # x_est and c_est are not affected by Delta, therefore omitted in later calculations (relative loss comparisons)
         
 
         
     def _generalization_loss(self, Delta, test_ids):
         Y_test_mat = self.Y_df.loc[:,test_ids].values
-        C_test_mat = self.C_df_baseline.loc[:,test_ids].values
-        recon_error = Y_test_mat - ((Delta.values * self.X_mat) @ C_test_mat)
+        Cc_test_mat = self.Cc_mat[:,test_ids]
+        Xx_mat = np.hstack((Delta.values * self.X_mat, self.x_df.values))
+        recon_error = Y_test_mat - (Xx_mat @ Cc_test_mat)
+        # x c hinzufügen
         #print(recon_error.shape)
         #print(self.G_mat.shape)
         loss_raw = np.linalg.norm(recon_error, 'fro')**2
@@ -127,8 +131,6 @@ class HPS2:
             for result in tqdm(pool.imap_unordered(self._run_job, jobs), total=len(jobs), desc="Running jobs"):
                 results.append(result)
 
-        # Store or return results as appropriate (here we set them as an attribute)
-        self.results = results
 
         # Write results to a log file with a timestamp
         log_filename = f"deconomix_run_results_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
@@ -140,6 +142,95 @@ class HPS2:
                     logfile.write(str(res) + "\n")
         except Exception as e:
             print(f"Could not write log file: {e}")
+        
+        # Store or return results as appropriate (here we set them as an attribute)
+        self.results_raw = pd.DataFrame(results)
+        self.results = self.results_raw.groupby('lambda').agg({'loss_raw': ['mean', 'std'],
+                                                         'loss_weighted': ['mean', 'std']})
+
+    def get_lambda_1se(self):
+        """
+        Determine lambda2 using the 1SE rule.
+
+        Returns
+        -------
+        float
+            Lambda2 value corresponding to the 1SE rule.
+        """
+
+        # Calculate mean and standard deviation across each lambda
+        avgLoss = self.results[('loss_raw', 'mean')]
+        stdLoss = self.results[('loss_raw', 'std')]
+        
+        # Find the minimum average loss and its standard deviation
+        minMean = avgLoss.idxmin() 
+        minMeanValue = avgLoss[minMean] 
+        std_at_min = stdLoss[minMean]  
+
+        threshold = minMeanValue + std_at_min
+        
+        # Find the largest lambda where the average loss is <= threshold
+        lambda_1se = avgLoss[avgLoss <= threshold].index.max()
+        if lambda_1se == avgLoss.index[-1]:
+            print('Warning: No index within 1se. Returning minimum.')
+            return minMean
+        
+        return lambda_1se
 
 
 
+    def plot_results(self, title=None, path=None):
+        """
+        Plot hyperparameter search results with error bars.
+
+        Parameters
+        ----------
+        results : list of dict
+            Each dict must have 'lambda', 'loss_raw', and 'loss_weighted' (per-fold results).
+        """
+
+        # Convert results (list of dicts) to DataFrame
+        #results_df = pd.DataFrame(results)
+
+        # Group by lambda, compute mean and std per lambda
+        #grouped = results_df.groupby('lambda').agg({
+        #    'loss_raw': ['mean', 'std'],
+        #    'loss_weighted': ['mean', 'std']
+        #})
+        #print(grouped)
+
+        # Prepare X and error bars
+        lambdas = np.array(self.results.index, dtype=float)
+        loss_raw_mean = self.results[('loss_raw', 'mean')].values
+        loss_raw_std = self.results[('loss_raw', 'std')].values
+        loss_weighted_mean = self.results[('loss_weighted', 'mean')].values
+        loss_weighted_std = self.results[('loss_weighted', 'std')].values
+
+        # Plot with error bars on two separate subplots
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+        if title is not None:
+            fig.suptitle(title)
+
+        # Raw loss subplot
+        axes[0].errorbar(lambdas, loss_raw_mean, yerr=loss_raw_std, 
+                        label='Loss (raw)', marker='o', capsize=3, linestyle='-')
+        axes[0].set_xscale('log')
+        axes[0].set_xlabel('Lambda')
+        axes[0].set_ylabel('Loss (raw)')
+        axes[0].set_title('Loss (raw) vs Lambda')
+        axes[0].legend()
+
+        # Weighted loss subplot
+        axes[1].errorbar(lambdas, loss_weighted_mean, yerr=loss_weighted_std, 
+                        label='Loss (weighted)', marker='s', capsize=3, linestyle='--')
+        axes[1].set_xscale('log')
+        axes[1].set_xlabel('Lambda')
+        axes[1].set_ylabel('Loss (weighted)')
+        axes[1].set_title('Loss (weighted) vs Lambda')
+        axes[1].legend()
+
+        plt.tight_layout()
+        if path is not None:
+            plt.savefig(path)
+        plt.show()
