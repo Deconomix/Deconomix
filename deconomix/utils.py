@@ -21,6 +21,7 @@ def simulate_data(
     scRNA_df : pd.DataFrame,
     n_mixtures : int,
     n_cells_in_mix : int,
+    ct_labels : list = None,
     n_genes : int = None,
     seed : int = 1,
     coverage_threshold : int = 5):
@@ -39,11 +40,13 @@ def simulate_data(
         How many artificial bulks should be created.
     n_cells_in_mix : int
         How many profiles from scRNA_df should be randomly mixed together in one artifical bulk.
-    n_genes : int
+    ct_labels : list (optional)
+        List of cell type labels for each sample in scRNA_df. If not provided, the column labels from scRNA_df will be used.
+    n_genes : int (optional)
         Filters genes from scRNA_df by variance across celltypes and restricts the gene space to the n_genes most variable genes.
-    seed : int
+    seed : int (optional)
         Random seed for the drawing process.
-    coverage_threshold : int
+    coverage_threshold : int (optional)
         Minimum number of examples per cell type, if number of examples is below the threshold a warning will be thrown. (Default = 5).
 
     Returns
@@ -78,6 +81,14 @@ def simulate_data(
             warnings.warn(f"Warning: Only one example provided for cell type '{celltype}'. The mean will be the same as the single example.")
         elif count <= coverage_threshold:  # Assuming coverage_threshold is defined
             warnings.warn(f"Warning: Low coverage for cell type '{celltype}' ({count} examples).")
+    
+    # Attach ct_labels to scRNA_df if provided
+    if ct_labels is not None:
+        if len(ct_labels) != scRNA_df.shape[1]:
+            raise ValueError(
+                f"Length of ct_labels ({len(ct_labels)}) does not match number of samples (columns) in scRNA_df ({scRNA_df.shape[1]})."
+            )
+        scRNA_df.columns = ct_labels
 
     # Gene filter function
     def gene_filter(scRNA_df, n_genes=1000):
