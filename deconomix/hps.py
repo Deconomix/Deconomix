@@ -18,10 +18,10 @@ class HPS:
                  lambdas: Iterable = np.logspace(-20, 0, num=21)):
 
         # Initialize Attributes
-        self.X_df = X_ref
-        self.X_mat = X_ref.values
-        self.Y_df = Y_test
-        self.Y_mat = Y_test.values
+        self.X_df = X_ref.astype(np.float64)
+        self.X_mat = self.X_df.values
+        self.Y_df = Y_test.astype(np.float64)
+        self.Y_mat = self.Y_df.values
         self.gamma = gamma
         self.G_mat = np.diag(np.sqrt(gamma.values.flatten()))
         self.k_folds = k_folds
