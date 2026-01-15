@@ -13,17 +13,18 @@ class HPS:
     def __init__(self,
                  X_ref : pd.DataFrame,
                  Y_test : pd.DataFrame,
-                 gamma : pd.DataFrame,
                  k_folds: int = 5,
                  lambdas: Iterable = np.logspace(-20, 0, num=21)):
 
         # Initialize Attributes
-        self.X_df = X_ref.astype(np.float64)
+        self.X_df = X_ref.astype(np.float64)#/np.sum(X_ref.values, 0)
         self.X_mat = self.X_df.values
-        self.Y_df = Y_test.astype(np.float64)
+        self.Y_df = Y_test.astype(np.float64)#/np.sum(Y_test.values, 0)
         self.Y_mat = self.Y_df.values
-        self.gamma = gamma
-        self.G_mat = np.diag(np.sqrt(gamma.values.flatten()))
+        
+        self.gamma = pd.DataFrame(1. / self.Y_df.shape[1] * np.ones(self.Y_df.shape[0]) / (self.Y_df.mean(axis=1))**2,
+                                  index=self.X_df.index)
+        self.G_mat = np.diag(np.sqrt(self.gamma.values.flatten()))
         self.k_folds = k_folds
         self.lambdas = lambdas
         self.validation_losses = pd.DataFrame(
@@ -169,8 +170,9 @@ class HPS:
 
         threshold = minMeanValue + std_at_min
         
-        # Find the largest lambda where the average loss is <= threshold
-        lambda_1se = avgLoss[avgLoss <= threshold].index.max()
+        # Find the largest lambda where the average loss is <= threshold, then multiply with 10 to get the 
+        # more conservative choice on the graph.
+        lambda_1se = avgLoss[avgLoss <= threshold].index.max()*10
         if lambda_1se == avgLoss.index[-1]:
             print('Warning: No index within 1se. Returning minimum.')
             return minMean
@@ -181,54 +183,34 @@ class HPS:
 
     def plot_results(self, title=None, path=None):
         """
-        Plot hyperparameter search results with error bars.
+        Plot hyperparameter search results (loss_raw) with error bars.
 
         Parameters
         ----------
-        results : list of dict
-            Each dict must have 'lambda', 'loss_raw', and 'loss_weighted' (per-fold results).
+        title : str or None
+            Title of the plot (optional).
+        path : str or None
+            If provided, the plot will be saved to this path.
         """
 
-        # Convert results (list of dicts) to DataFrame
-        #results_df = pd.DataFrame(results)
-
-        # Group by lambda, compute mean and std per lambda
-        #grouped = results_df.groupby('lambda').agg({
-        #    'loss_raw': ['mean', 'std'],
-        #    'loss_weighted': ['mean', 'std']
-        #})
-        #print(grouped)
-
-        # Prepare X and error bars
+        # Prepare X and error bars for loss_raw only
         lambdas = np.array(self.results.index, dtype=float)
         loss_raw_mean = self.results[('loss_raw', 'mean')].values
         loss_raw_std = self.results[('loss_raw', 'std')].values
-        loss_weighted_mean = self.results[('loss_weighted', 'mean')].values
-        loss_weighted_std = self.results[('loss_weighted', 'std')].values
 
-        # Plot with error bars on two separate subplots
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        # Plot with error bars (just one plot)
+        fig, ax = plt.subplots(figsize=(7, 5))
 
         if title is not None:
             fig.suptitle(title)
 
-        # Raw loss subplot
-        axes[0].errorbar(lambdas, loss_raw_mean, yerr=loss_raw_std, 
-                        label='Loss (raw)', marker='o', capsize=3, linestyle='-')
-        axes[0].set_xscale('log')
-        axes[0].set_xlabel('Lambda')
-        axes[0].set_ylabel('Loss (raw)')
-        axes[0].set_title('Loss (raw) vs Lambda')
-        axes[0].legend()
-
-        # Weighted loss subplot
-        axes[1].errorbar(lambdas, loss_weighted_mean, yerr=loss_weighted_std, 
-                        label='Loss (weighted)', marker='s', capsize=3, linestyle='--')
-        axes[1].set_xscale('log')
-        axes[1].set_xlabel('Lambda')
-        axes[1].set_ylabel('Loss (weighted)')
-        axes[1].set_title('Loss (weighted) vs Lambda')
-        axes[1].legend()
+        ax.errorbar(lambdas, loss_raw_mean, yerr=loss_raw_std, 
+                    label='Loss (raw)', marker='o', capsize=3, linestyle='-')
+        ax.set_xscale('log')
+        ax.set_xlabel('Lambda')
+        ax.set_ylabel('Average Out-of-Distribution Error')
+        #ax.set_title('Loss (raw) vs Lambda')
+        #ax.legend()
 
         plt.tight_layout()
         if path is not None:
