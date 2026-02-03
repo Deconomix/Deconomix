@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 from deconomix.methods import DTD, ADTD
-from deconomix.utils import simulate_data, calculate_estimated_composition
+from deconomix.utils import simulate_data, calculate_estimated_composition, plot_corr, calculate_corr
 import warnings
 
 class Deconomix:
@@ -56,6 +56,52 @@ class Deconomix:
         self.gamma = algo_DTD.gamma
         if self.verbose:
             print("Gene weights optimized.")
+
+    def validate_fit(self,
+                     test_sc_df : pd.DataFrame,
+                     n_mixtures = 1000,
+                     plot = True,
+                     hidden_ct=None):
+        if self.verbose:
+            print("Simulating test bulks...")
+        _, Y_test, C_test = simulate_data(scRNA_df = test_sc_df,
+                                                               n_mixtures = n_mixtures,
+                                                               n_cells_in_mix = 100)
+        if self.verbose:
+            print("Test bulks simulated.")
+        
+        C_test_est = calculate_estimated_composition(self.X_ref, Y_test, self.gamma)
+
+        if hidden_ct == None:
+
+            if plot:
+                plot_corr(C_test, C_test_est,
+                        title='Performance on test data\n model: Deconomix',
+                        color = '#5e81ac')
+            print(calculate_corr(C_test, C_test_est))
+
+        elif hidden_ct is not None:
+            # predict with Deconomix+h model
+            algo_ADTD = ADTD(X_mat = self.X_ref,
+                             Y_mat = Y_test,
+                             gamma = self.gamma,
+                             C_static = True,
+                             Delta_static = True,
+                             max_iterations = 1000)
+            algo_ADTD.run(verbose = self.verbose)
+            C_test_est = algo_ADTD.C_est
+            c_test_est = algo_ADTD.c_est
+            if plot:
+                plot_corr(C_test, C_test_est,
+                        title='Performance on test data\n model: Deconomix+h\n(cell type: ' + hidden_ct + ' hidden in training set)',
+                        color = '#5e81ac',
+                        hidden_ct = hidden_ct,
+                        c_est = c_test_est)
+            print(calculate_corr(C_test, C_test_est, hidden_ct = hidden_ct, c_est = c_test_est))
+
+        
+        
+
         
     
 
