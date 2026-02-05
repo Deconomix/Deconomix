@@ -1,51 +1,16 @@
 Deconomix Documentation
 ==================
-The `deconomix` package provides functions for (Adaptive) Digital Tissue Deconvolution.
-It is split into two collections of functions, `deconomix.utils` and `deconomix.methods`, where the first provides useful utilities 
-around the usual deconvolution workflow and the latter provides the actual models and training routines.
+The `Deconomix` package provides functions for building cell-type deconvolution pipelines using different models based on the (A)DTD algorithm.
+It is split into four Python modules, where `deconomix.models` contains the Deconomix class. It is a wrapper for all models introduced in the article and offers a straightforward application to your data. The modules `deconomix.utils` and `deconomix.methods` provide the underlying utilities and algorithms, respectively and are aimed at advanced users. The module `deconomix.hps` contains the hyperparameter search function usable to find  a suitable hyperparameter for the Deconomix+h,r model.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   models
    utils
    methods
-
-Modules
-------------
-In the article, we divided the functionalities of Deconomix semantically into three different modules, which are realizable with the Python functions we provide in the package. However, the functions have a broad spectrum of use-cases overall, which we want to keep for advanced users. Therefore we want to give a summary on how to use the modules described in the article here:
-
-Module 1: Learning Gene Weights:
-
-.. code-block:: python
-
-   X_ref, Y_train, C_train = deconomix.utils.simulate_data(scRNA_df, n_mixtures=10000)
-   module1 = deconomix.methods.DTD(X_ref, Y_train, C_train)
-   module1.run()
-   gene_weights = module1.gamma
-
-Module 2: Cellular Composition (with hidden background)
-
-.. code-block:: python
-
-   module2 = deconomix.methods.ADTD(X_ref, test_bulks_df, gene_weights, C_static = False, Delta_static = True)
-   module2.run()
-   Cellular_Contributions   = module2.C_est
-   Hidden_Contributions     = module2.c_est
-   Hidden_Consensus_Profile = module2.x_est
-
-Module 3: Gene Regulation
-
-.. code-block:: python
-
-   # Search hyperparameter with deconomix.methods.HPS() or determine otherwise, e.g. 1e-6
-   module3 = deconomix.methods.ADTD(X_ref, test_bulks_df, gene_weights, C_static=True, Delta_static = False, lambda2 = 1e-6)
-   # This also updates the cellular contributions slightly.
-   Cellular_Contributions = module3.C_est
-   Hidden_Contributions   = module3.c_est
-   Hidden_Consensus_Profile = module3.x_est
-   Gene_Regulation_Factors = module3.Delta_est
-
+   hps
 
 Installation
 ------------
