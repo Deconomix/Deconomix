@@ -113,7 +113,7 @@ class HPS:
 
         loss_raw, loss_weighted  = self._generalization_loss(model.Delta_est, test_ids)
         #print(f"Finished job: fold={fold}, lambda={lmbda}, loss={loss}")
-        return {"fold": fold, "lambda": lmbda, "loss_raw": loss_raw, "loss_weighted": loss_weighted}
+        return {"fold": fold, "lambda": lmbda, "loss" : loss_raw} #loss_raw": loss_raw, "loss_weighted": loss_weighted}
 
 
     def run(self, n_workers=10):
@@ -146,73 +146,119 @@ class HPS:
         
         # Store or return results as appropriate (here we set them as an attribute)
         self.results_raw = pd.DataFrame(results)
-        self.results = self.results_raw.groupby('lambda').agg({'loss_raw': ['mean', 'std'],
-                                                         'loss_weighted': ['mean', 'std']})
-
-    def get_lambda_1se(self):
-        """
-        Determine lambda2 using the 1SE rule.
-
-        Returns
-        -------
-        float
-            Lambda2 value corresponding to the 1SE rule.
-        """
-
-        # Calculate mean and standard deviation across each lambda
-        avgLoss = self.results[('loss_raw', 'mean')]
-        stdLoss = self.results[('loss_raw', 'std')]
-        
-        # Find the minimum average loss and its standard deviation
-        minMean = avgLoss.idxmin() 
-        minMeanValue = avgLoss[minMean] 
-        std_at_min = stdLoss[minMean]  
-
-        threshold = minMeanValue + std_at_min
-        
-        # Find the largest lambda where the average loss is <= threshold, then multiply with 10 to get the 
-        # more conservative choice on the graph.
-        lambda_1se = avgLoss[avgLoss <= threshold].index.max()*10
-        if lambda_1se == avgLoss.index[-1]:
-            print('Warning: No index within 1se. Returning minimum.')
-            return minMean
-        
-        return lambda_1se
+        self.results = self.results_raw.groupby('lambda').agg({'loss': ['mean', 'std']})
 
 
 
-    def plot_results(self, title=None, path=None):
-        """
-        Plot hyperparameter search results (loss_raw) with error bars.
 
-        Parameters
-        ----------
-        title : str or None
-            Title of the plot (optional).
-        path : str or None
-            If provided, the plot will be saved to this path.
-        """
 
-        # Prepare X and error bars for loss_raw only
-        lambdas = np.array(self.results.index, dtype=float)
-        loss_raw_mean = self.results[('loss_raw', 'mean')].values
-        loss_raw_std = self.results[('loss_raw', 'std')].values
+#model_HPS_gamma_ones.plot_results()
 
-        # Plot with error bars (just one plot)
-        fig, ax = plt.subplots(figsize=(7, 5))
 
-        if title is not None:
-            fig.suptitle(title)
+def get_lambda_min(results):
+    """
+    Determine lambda2 using the minimum loss.
 
-        ax.errorbar(lambdas, loss_raw_mean, yerr=loss_raw_std, 
-                    label='Loss (raw)', marker='o', capsize=3, linestyle='-')
-        ax.set_xscale('log')
-        ax.set_xlabel('Lambda')
-        ax.set_ylabel('Average Out-of-Distribution Error')
-        #ax.set_title('Loss (raw) vs Lambda')
-        #ax.legend()
+    Parameters
+    ----------
+    results : pd.DataFrame
+        Results from the HPS run.
 
-        plt.tight_layout()
-        if path is not None:
-            plt.savefig(path)
-        plt.show()
+    Returns
+    -------
+    float
+        Lambda2 value corresponding to the minimum loss.
+    """ 
+    return results[('loss', 'mean')].idxmin()
+
+def get_lambda_1se(results):
+    """
+    Determine lambda2 using the 1SE rule.
+
+    Parameters
+    ----------
+    results : pd.DataFrame
+        Results from the HPS run.
+
+    Returns
+    -------
+    float
+        Lambda2 value corresponding to the 1SE rule.
+    """
+
+    # Calculate mean and standard deviation across each lambda
+    avgLoss = results[('loss', 'mean')]
+    stdLoss = results[('loss', 'std')]
+    
+    # Find the minimum average loss and its standard deviation
+    minMean = avgLoss.idxmin() 
+    minMeanValue = avgLoss[minMean] 
+    std_at_min = stdLoss[minMean]  
+
+    threshold = minMeanValue + std_at_min
+    
+    # Find the largest lambda where the average loss is <= threshold, then multiply with 10 to get the 
+    # more conservative choice on the graph.
+    lambda_1se = avgLoss[avgLoss <= threshold].index.max()*10
+    if lambda_1se == avgLoss.index[-1]:
+        print('Warning: No index within 1se. Returning minimum.')
+        return minMean
+    
+    return lambda_1se
+
+def plot_results(results, title=None, path=None):
+    """
+    Plot hyperparameter search results with uncertainty visualized as a colored region.
+
+    Parameters
+    ----------
+    results : pd.DataFrame
+        Results from the HPS run.
+    title : str or None
+        Title of the plot (optional).
+    path : str or None
+        If provided, the plot will be saved to this path.
+    """
+
+    # Prepare X and uncertainty for loss_raw only
+    lambdas = np.array(results.index, dtype=float)
+    loss_raw_mean = results[('loss', 'mean')].values
+    loss_raw_std = results[('loss', 'std')].values
+
+    # Plot with filled error region
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    if title is not None:
+        fig.suptitle(title)
+
+    ax.plot(lambdas, loss_raw_mean, marker='o', linestyle='-', alpha=0.5)
+    ax.scatter(lambdas, loss_raw_mean, label='Test Loss', marker='o', alpha=1)
+    # Fill between mean - std and mean + std for shaded error region
+    ax.fill_between(lambdas, 
+                    loss_raw_mean - loss_raw_std, 
+                    loss_raw_mean + loss_raw_std, 
+                    color='C0', alpha=0.2, label='Std. deviation')
+    
+    lambda_min = get_lambda_min(results)
+    lambda_1se = get_lambda_1se(results)
+    min_mean = results[('loss', 'mean')].loc[lambda_min]
+    one_se_mean = results[('loss', 'mean')].loc[lambda_1se]
+    # Plot lambda_min with black, lambda_1se with green
+    #ax.axvline(lambda_min, color='black', linestyle='--', label='lambda min')
+    ax.scatter([lambda_min], [min_mean], color='black', zorder=5, label='$\\lambda_2$ min')
+    #ax.axvline(lambda_1se, color='green', linestyle='--', label='lambda 1se')
+    ax.scatter([lambda_1se], [one_se_mean], color='green', zorder=5, label='$\\lambda_2$ 1se')
+
+    ax.legend()
+
+    ax.set_xscale('log')
+    ax.set_xlabel('$\\lambda_2$')
+    ax.set_ylabel('Average Out-of-Distribution Error')
+    # ax.set_title('Loss (raw) vs Lambda')
+    # ax.legend()
+
+    plt.tight_layout()
+    if path is not None:
+        plt.savefig(path)
+    plt.show()
+
