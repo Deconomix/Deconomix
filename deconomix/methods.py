@@ -124,7 +124,6 @@ class DTD:
 
     # Define custom PyTorch model for gradient optimization
     class Model(nn.Module):
-
         def __init__(self, p):
             super().__init__()
             # Set seed for reproducibility
@@ -329,10 +328,6 @@ class ADTD:
 
 
     def setup(self):
-        """
-        Still needed due to reasonable estimate for x.
-        Random initialization may be possible.
-        """
         reg_nnls = LinearRegression(fit_intercept=False, positive=True)
         self.C0_init = reg_nnls.fit(self.G @ self.X, self.G @ self.Y).coef_.T
         x_base = np.mean(self.Y - self.X @ self.C0_init, 1).reshape((self.p, 1))
@@ -342,10 +337,6 @@ class ADTD:
 
 
     def update_C0(self):
-        """
-        Calculate C0 with with lambda1=0 and lambda2->inf. 
-        Reasoning that lambda1->inf yields DTD solution no longer holds.
-        """
         A = self.G @ self.Y  # (p x n) - matrix
         B = np.c_[(self.G @ self.X), (self.G @ self.x)]
 
