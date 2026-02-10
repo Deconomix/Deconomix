@@ -193,6 +193,10 @@ class Deconomix:
         if not bulk_df.index.equals(self.X_ref.index):
             raise ValueError("Gene labels (index) must be identical between X_ref and bulk_df.")
 
+
+        # Extract sample ids from bulk_df
+        sample_ids = bulk_df.columns
+
         # Caculate gamma naive
         self.gamma_naive = pd.Series(np.ones((self.X_ref.shape[0])))
         self.gamma_naive.index = self.X_ref.index
@@ -247,3 +251,11 @@ class Deconomix:
             self.c_est = algo_ADTD.c_est
             self.x_est = algo_ADTD.x_est
             self.Delta_est = algo_ADTD.Delta_est
+
+        # Add sample ids to the estimates if they are not None
+        if self.C_est is not None:
+            self.C_est.columns = sample_ids
+        if self.c_est is not None:
+            self.c_est.columns = sample_ids
+        if self.x_est is not None:
+            self.x_est.columns = ["hidden profile"]
