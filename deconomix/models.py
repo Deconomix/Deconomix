@@ -7,6 +7,37 @@ from deconomix.utils import simulate_data, calculate_estimated_composition, plot
 import warnings
 
 class Deconomix:
+    """Wrapper class for Deconomix algorithms, providing methods to fit, predict, and analyze
+    cell type deconvolution models using single-cell and bulk gene expression data.
+    Includes the naive, Deconomix, Deconomix+h, Deconomix+h,r models described in the article.
+
+    The Deconomix class integrates core deconvolution algorithms (e.g., DTD, ADTD) and utilities
+    for simulating artificial bulks, optimizing gene weights, and estimating cell compositions.
+
+    Attributes
+    ----------
+    verbose : bool
+        Whether to print verbose output during model fitting.
+    X_ref : np.ndarray or None
+        Reference matrix of single cell data used for training.
+    Y_train : np.ndarray or None
+        Matrix of simulated bulk mixtures.
+    C_train : np.ndarray or None
+        Ground truth cell compositions for the mixtures.
+    gamma : np.ndarray or None
+        Optimized gene weights obtained from the DTD algorithm.
+    gamma_naive : np.ndarray or None
+        Optionally, gene weights before optimization.
+    C_est : np.ndarray or None
+        Estimated cell type compositions.
+    c_est : np.ndarray or None
+        Optionally, other forms of estimated compositions.
+    x_est : np.ndarray or None
+        Optionally, estimated expressions.
+    Delta_est : np.ndarray or None
+        Optionally, estimated Delta from model predictions.
+    """
+
     def __init__(self, verbose : bool = False):
         self.verbose = verbose
         self.X_ref = None
@@ -62,6 +93,20 @@ class Deconomix:
                      n_mixtures = 1000,
                      plot = True,
                      hidden_ct=None):
+        """
+        Validates the fit of Deconomix's gene weights by simulating test bulks from a separate single cell data set and predicting known cell type compositions with a Deconomix model or known and hidden cell type compositions with a Deconomix+h model.
+
+        Parameters
+        ----------
+        test_sc_df : pd.DataFrame
+            Data frame containing test single cell data with gene labels as rows and cell type labels as columns.
+        n_mixtures : int (optional)
+            Number of artificial bulks to simulate. Default is 1000.
+        plot : bool (optional)
+            Whether to plot the correlation between the true and estimated cell type compositions. Default is True.
+        hidden_ct : str (optional)
+            The cell type that is hidden in the training set. Default is None. If given, the Deconomix+h model is used to predict known and hidden cell type compositions.
+        """
         if self.verbose:
             print("Simulating test bulks...")
         _, Y_test, C_test = simulate_data(scRNA_df = test_sc_df,
@@ -111,6 +156,22 @@ class Deconomix:
                 lambda1: float = np.inf,
                 lambda2: float = None,
                 max_iterations : int = 1000):
+        """
+        Predicts cell type compositions for a given bulk data set using a specified Deconomix model.
+
+        Parameters
+        ----------
+        bulk_df : pd.DataFrame
+            Data frame containing the bulk data with gene labels as rows and sample labels as columns.
+        model : str (optional)
+            The model to use for prediction. Default is None. Must be one of ['Naive', 'Deconomix', 'Deconomix+h', 'Deconomix+h,r', 'Custom'].
+        lambda1 : float (optional)
+            Regularization parameter only used for custom models. Default is np.inf.
+        lambda2 : float (optional)
+            Regularization parameter used for the cell-type-specific gene regulation in the Deconomix+h,r model. Default is None.
+        max_iterations : int (optional)
+            The maximum number of iterations for the ADTD algorithm used in the Deconomix+h, Deconomix+h,r and custom models. Default is 1000.
+        """
         
         # Input Handling
 
@@ -131,6 +192,10 @@ class Deconomix:
             warnings.warn("You have already applied a model to the data. Predicting with a new model will overwrite estimates C_est, c_est, x_est and Delta_est.")
         if not bulk_df.index.equals(self.X_ref.index):
             raise ValueError("Gene labels (index) must be identical between X_ref and bulk_df.")
+
+
+        # Extract sample ids from bulk_df
+        sample_ids = bulk_df.columns
 
         # Caculate gamma naive
         self.gamma_naive = pd.Series(np.ones((self.X_ref.shape[0])))
@@ -186,3 +251,11 @@ class Deconomix:
             self.c_est = algo_ADTD.c_est
             self.x_est = algo_ADTD.x_est
             self.Delta_est = algo_ADTD.Delta_est
+
+        # Add sample ids to the estimates if they are not None
+        if self.C_est is not None:
+            self.C_est.columns = sample_ids
+        if self.c_est is not None:
+            self.c_est.columns = sample_ids
+        if self.x_est is not None:
+            self.x_est.columns = ["hidden profile"]

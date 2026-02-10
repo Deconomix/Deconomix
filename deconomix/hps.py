@@ -10,6 +10,27 @@ from tqdm import tqdm
 import datetime
 
 class HPS:
+    """
+    Class that implements a hyperparameter search routine usable to find  a suitable hyperparameter for the ADTD algorithm used in the Deconomix+h,r model.
+    
+    Parameters
+    ----------
+    X_ref : pd.DataFrame
+        Reference matrix of single cell data used for training.
+    Y_test : pd.DataFrame
+        Bulk test data. Default is None.
+    k_folds : int (optional)
+        Number of folds for cross-validation. Default is 5.
+    lambdas : Iterable (optional)
+        List of lambda2 values to search. Default is 21 logarithmically spaced values between 10^-20 and 1. Default is 21 logarithmically spaced values between 10^-20 and 1.
+
+    Attributes
+    ----------
+    results : pd.DataFrame
+        Results from the hyperparameter search. Contains the mean and standard deviation of the validation losses for each lambda2 value.
+    results_raw : pd.DataFrame
+        Raw results from the hyperparameter search. Contains the validation losses for each fold and lambda2 value.
+    """
     def __init__(self,
                  X_ref : pd.DataFrame,
                  Y_test : pd.DataFrame,
@@ -117,8 +138,14 @@ class HPS:
 
 
     def run(self, n_workers=10):
-        # Assume self.jobs is a list of job dicts to process.
-        # If not defined, user is expected to set up jobs before calling run().
+        """
+        Runs the hyperparameter search routine. Populates the attributes `results_raw` and `results`.
+
+        Parameters
+        ----------
+        n_workers : int (optional)
+            Number of workers for parallel processing. Default is 10.
+        """
 
         jobs = getattr(self, "jobs", None)
         if jobs is None:
